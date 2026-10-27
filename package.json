@@ -1,0 +1,8 @@
+{
+  "name":"agent-shiplab","version":"0.1.0","private":true,
+  "description":"Full-stack app for reproducible AI coding-agent challenges",
+  "scripts":{"dev":"next dev --hostname 0.0.0.0","build":"next build","start":"next start --hostname 0.0.0.0","typecheck":"tsc --noEmit","test":"vitest run","test:e2e":"playwright test","db:push":"prisma db push","db:seed":"tsx prisma/seed.ts","setup":"prisma generate && prisma db push && tsx prisma/seed.ts","postinstall":"prisma generate"},
+  "engines":{"node":">=20"},
+  "dependencies":{"@prisma/client":"^6.16.3","dotenv":"^16.6.1","lucide-react":"^0.468.0","next":"^15.5.4","react":"^19.1.1","react-dom":"^19.1.1"},
+  "devDependencies":{"@playwright/test":"^1.55.1","@types/node":"^22.18.6","@types/react":"^19.1.13","@types/react-dom":"^19.1.9","prisma":"^6.16.3","tsx":"^4.20.6","typescript":"^5.8.3","vitest":"^3.2.4"}
+}
