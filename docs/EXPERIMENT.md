@@ -13,7 +13,7 @@
 ## Challenge A — Search regression (the hook)
 **Starting point:** Create a branch from main and introduce exactly one controlled failure in \`filterTasks()\`: make query matching case-sensitive instead of case-insensitive. This is **deliberately seeded** for the experiment, not a spontaneous bug.
 
-**Reproduce:** Search for \`navigation\` with a seeded task titled \`Investigate navigation overflow\` — the card disappears when query case does not match. Run \`npm test\`; the case-insensitive search test should fail.
+**Reproduce:** Search for \`NAVIGATION\` with a seeded task titled \`Investigate navigation overflow\` — the card disappears when query case does not match. Run \`npm test\`; the case-insensitive search test should fail.
 
 **Prompt to the agent:**
 > In this ShipLab branch, task search incorrectly treats uppercase and lowercase letters differently. Reproduce the failure, fix the root cause without disabling tests, add or preserve the regression test, and provide a working preview and a pull request with test evidence. Do not change unrelated features.
