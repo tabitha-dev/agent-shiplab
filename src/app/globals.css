@@ -142,3 +142,13 @@ select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid 
 .analytics-table caption { text-align:left; font-weight:600; padding:12px 0; }
 .analytics-table th,.analytics-table td { text-align:left; padding:12px 8px; border-bottom:1px solid #dedee8; }
 .side-nav button:focus-visible { outline:3px solid #7655d6; outline-offset:2px; }
+/* Keep the drawer close action above its content and board scrolling inside the board. */
+.drawer-close{display:none}
+@media(max-width:700px){
+  .sidebar .drawer-close{display:grid;place-items:center;align-self:flex-end;flex-shrink:0;background:#202437;color:white;border:1px solid #555b75;border-radius:8px;width:36px;height:36px;margin-bottom:12px}
+  .board-foot{flex-wrap:wrap}
+  .board-foot>span{min-width:0;overflow-wrap:anywhere}
+}
+/* Anchor visually hidden labels to their scroll container, rather than the page. */
+.board{position:relative}
+.board-foot{flex-wrap:wrap}

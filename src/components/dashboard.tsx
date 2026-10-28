@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import {calculateStats,filterTasks,sortTasks,isOverdue,type DueFilter,type TaskSort,PRIORITIES,PROJECTS,STATUSES,statusCounts,type TaskDTO,type TaskPriority,type TaskStatus} from "@/lib/task-logic";
 
+import {CSV_FILENAME,tasksToCsv} from "@/lib/task-csv";
+
 type View="overview"|"board"|"analytics";
 type CreateFields={title:string;description:string;project:string;assignee:string;priority:TaskPriority;status:TaskStatus;dueDate:string};
 const emptyForm:CreateFields={title:"",description:"",project:"Aurora",assignee:"You",priority:"Medium",status:"Backlog",dueDate:""};
@@ -32,12 +34,36 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
   const [menuOpen,setMenuOpen]=useState(false);
+  const menuToggle=useRef<HTMLButtonElement>(null);
+  const menuClose=useRef<HTMLButtonElement>(null);
+  const [mobile,setMobile]=useState(false);
+  useEffect(()=>{
+    const media=window.matchMedia("(max-width:700px)");
+    const update=()=>{setMobile(media.matches);if(!media.matches)setMenuOpen(false);};
+    update();media.addEventListener("change",update);
+    return()=>media.removeEventListener("change",update);
+  },[]);
+  useEffect(()=>{
+    if(!menuOpen)return;
+    menuClose.current?.focus();
+    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape"){setMenuOpen(false);menuToggle.current?.focus();}};
+    document.addEventListener("keydown",escape);
+    return()=>document.removeEventListener("keydown",escape);
+  },[menuOpen]);
+  function closeMenu(){setMenuOpen(false);menuToggle.current?.focus();}
   const dialog=useRef<HTMLDialogElement>(null);
   const stats=useMemo(()=>calculateStats(tasks),[tasks]);
   const counts=useMemo(()=>statusCounts(tasks),[tasks]);
   const filtered=useMemo(()=>sortTasks(filterTasks(tasks,{query,priority,project,status,due},today),sort),[tasks,query,priority,project,status,due,sort,today]);
   useEffect(()=>{if(!notice)return;const timer=setTimeout(()=>setNotice(""),5000);return()=>clearTimeout(timer);},[notice]);
 
+  function exportCsv(){
+    const url=URL.createObjectURL(new Blob([tasksToCsv(filtered)],{type:"text/csv;charset=utf-8"}));
+    const link=document.createElement("a");
+    link.href=url;link.download=CSV_FILENAME;document.body.appendChild(link);
+    try{link.click();setNotice(filtered.length?`Exported ${filtered.length} tasks.`:"Exported headers only: no tasks match your filters.");}
+    finally{link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  }
   function openNew(){setForm(emptyForm);dialog.current?.showModal();}
   function closeNew(){dialog.current?.close();}
   function setField<K extends keyof CreateFields>(key:K,value:CreateFields[K]){
@@ -85,17 +111,18 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
   const completionSegments=STATUSES.map(key=>({key,count:counts[key],pct:stats.total?counts[key]/stats.total*100:0}));
 
   return <div className="shell">
-    <aside className={"sidebar "+(menuOpen?"sidebar-open":"")} aria-label="Workspace navigation">
+    <aside id="workspace-navigation" inert={mobile&&!menuOpen} className={"sidebar "+(menuOpen?"sidebar-open":"")} aria-label="Workspace navigation">
+      <button ref={menuClose} className="drawer-close" type="button" aria-label="Close navigation" onClick={closeMenu}><X size={20}/></button>
       <div className="brand"><div className="brand-mark"><Sparkles size={22}/></div><div><strong>ShipLab<span className="brand-dot">.</span></strong><small>AGENT WORKSPACE</small></div></div>
       <div className="workspace-switch"><div className="workspace-avatar">S</div><span><strong>Studio workspace</strong><small>Personal project</small></span><Check size={16}/></div>
       <div className="sidebar-section-title">WORKSPACE</div>
       <nav className="side-nav" aria-label="Main menu">
-        <button type="button" onClick={()=>{setView("overview");setMenuOpen(false);}} className={view==="overview"?"nav-active":""} aria-current={view==="overview"?"page":undefined}><LayoutDashboard size={18}/> Overview</button>
-        <button type="button" onClick={()=>{setView("board");setMenuOpen(false);}} className={view==="board"?"nav-active":""} aria-current={view==="board"?"page":undefined}><Columns3 size={18}/> Project board <span className="nav-count">{stats.total}</span></button>
-      <button type="button" onClick={()=>{setView("analytics");setMenuOpen(false);}} className={view==="analytics"?"nav-active":""} aria-current={view==="analytics"?"page":undefined}><BarChart3 size={18}/> Analytics</button></nav>
+        <button type="button" onClick={()=>{setView("overview");closeMenu();}} className={view==="overview"?"nav-active":""} aria-current={view==="overview"?"page":undefined}><LayoutDashboard size={18}/> Overview</button>
+        <button type="button" onClick={()=>{setView("board");closeMenu();}} className={view==="board"?"nav-active":""} aria-current={view==="board"?"page":undefined}><Columns3 size={18}/> Project board <span className="nav-count">{stats.total}</span></button>
+      <button type="button" onClick={()=>{setView("analytics");closeMenu();}} className={view==="analytics"?"nav-active":""} aria-current={view==="analytics"?"page":undefined}><BarChart3 size={18}/> Analytics</button></nav>
       <div className="sidebar-section-title">YOUR PIPELINE</div>
       <nav className="side-nav" aria-label="Task status filters">
-        {STATUSES.map(name=><button key={name} type="button" onClick={()=>{setStatus(name);setView("board");setMenuOpen(false);}} className={status===name?"nav-soft-active":""}><span className={"status-dot dot-"+name.replaceAll(" ","-").toLowerCase()}/>{name}<span className="nav-count">{counts[name]}</span></button>)}
+        {STATUSES.map(name=><button key={name} type="button" onClick={()=>{setStatus(name);setView("board");closeMenu();}} className={status===name?"nav-soft-active":""}><span className={"status-dot dot-"+name.replaceAll(" ","-").toLowerCase()}/>{name}<span className="nav-count">{counts[name]}</span></button>)}
       </nav>
       <div className="sidebar-spacer"/>
       <div className="sidebar-callout"><div className="callout-icon"><ShieldCheck size={20}/></div><strong>Built to be tested.</strong><p>Real code. Real pull requests. Measurable results.</p><a href="https://github.com/tabitha-dev/agent-shiplab" target="_blank" rel="noreferrer">View GitHub repo <ArrowUpRight size={14}/></a></div>
@@ -103,7 +130,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
     </aside>
     <div className="main-region">
       <header className="topbar">
-        <button type="button" className="mobile-menu" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}><Columns3 size={20}/></button>
+        <button type="button" ref={menuToggle} className="mobile-menu" aria-controls="workspace-navigation" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}><Columns3 size={20}/></button>
         <div className="breadcrumb">Workspace <span>/</span> <strong>{view==="overview"?"Overview":view==="analytics"?"Analytics":"Project board"}</strong></div>
         <div className="top-actions"><span className="live-pill"><span className="live-dot"/> LOCAL DEMO</span><a href="https://github.com/tabitha-dev/agent-shiplab" target="_blank" rel="noreferrer" className="top-github" aria-label="View repository on GitHub"><Github size={19}/></a><button className="btn btn-primary" onClick={openNew} type="button"><Plus size={17}/> New task</button></div>
       </header>
@@ -136,7 +163,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
         {view!=="analytics" && <section className="board-section" aria-label="Project board">
           <div className="board-header"><div><div className="section-kicker">PROJECTS / TASK MANAGER</div><h2>{view==="board"?"Project board":"Your project board"}<span className="board-total">{stats.total}</span></h2><p>Move tasks through your workflow and keep every project on track.</p></div><button className="btn btn-outline" onClick={openNew} type="button"><Plus size={16}/> Add task</button></div>
           <div className="filterbar"><label className="search-field"><Search size={17}/><input aria-label="Search tasks" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search tasks, owners, projects..."/></label>
-          <div className="filters"><label className="select-wrap deadline-control"><span>Due date</span><select value={due} onChange={e=>setDue(e.target.value as DueFilter)}>{["All","Overdue","Due in next 7 days"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap deadline-control"><span>Sort by</span><select value={sort} onChange={e=>setSort(e.target.value as TaskSort)}>{["Due soonest","Newest first"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap"><span className="sr-only">Filter by project</span><select value={project} onChange={e=>setProject(e.target.value)} aria-label="Filter by project"><option value="All">All projects</option>{PROJECTS.map(p=><option key={p}>{p}</option>)}</select></label>
+          <div className="filters"><button type="button" className="btn btn-outline" onClick={exportCsv} aria-describedby="csv-help">Export CSV</button><span id="csv-help" className="sr-only">Exports current filters and sort. No matches exports headers only.</span><label className="select-wrap deadline-control"><span>Due date</span><select value={due} onChange={e=>setDue(e.target.value as DueFilter)}>{["All","Overdue","Due in next 7 days"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap deadline-control"><span>Sort by</span><select value={sort} onChange={e=>setSort(e.target.value as TaskSort)}>{["Due soonest","Newest first"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap"><span className="sr-only">Filter by project</span><select value={project} onChange={e=>setProject(e.target.value)} aria-label="Filter by project"><option value="All">All projects</option>{PROJECTS.map(p=><option key={p}>{p}</option>)}</select></label>
           <label className="select-wrap"><span className="sr-only">Filter by priority</span><select value={priority} onChange={e=>setPriority(e.target.value as TaskPriority|"All")} aria-label="Filter by priority"><option value="All">All priorities</option>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select></label>
           {status!=="All"&&<button className="filter-chip" onClick={()=>setStatus("All")} type="button">{status} <X size={14}/></button>}
           {filterActive&&<button className="clear-filters" type="button" onClick={clearFilters}>Clear filters</button>}
