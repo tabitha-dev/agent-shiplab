@@ -6,7 +6,7 @@ import {
   Circle,Clock3,Columns3,ExternalLink,Github,LayoutDashboard,ListFilter,Plus,
   Search,ShieldCheck,Sparkles,Trash2,X
 } from "lucide-react";
-import {calculateStats,filterTasks,PRIORITIES,PROJECTS,STATUSES,statusCounts,type TaskDTO,type TaskPriority,type TaskStatus} from "@/lib/task-logic";
+import {calculateStats,filterTasks,sortTasks,isOverdue,type DueFilter,type TaskSort,PRIORITIES,PROJECTS,STATUSES,statusCounts,type TaskDTO,type TaskPriority,type TaskStatus} from "@/lib/task-logic";
 
 type View="overview"|"board";
 type CreateFields={title:string;description:string;project:string;assignee:string;priority:TaskPriority;status:TaskStatus;dueDate:string};
@@ -16,15 +16,14 @@ const initials=(name:string)=>name.split(" ").map(part=>part[0]).slice(0,2).join
 const dateLabel=(value:string|null)=>value
   ? new Date(value).toLocaleDateString("en-US",{month:"short",day:"numeric",timeZone:"UTC"})
   : "No due date";
-const isOverdue=(task:TaskDTO)=>{
-  if(!task.dueDate||task.status==="Done")return false;
-  const d=new Date(task.dueDate).toISOString().slice(0,10);
-  return d<new Date().toISOString().slice(0,10);
-};
 
 export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
   const [tasks,setTasks]=useState(initialTasks);
   const [view,setView]=useState<View>("overview");
+  const [due,setDue]=useState<DueFilter>("All");
+  const [sort,setSort]=useState<TaskSort>("Due soonest");
+  const [today,setToday]=useState(()=>new Date());
+  useEffect(()=>{const timer=setInterval(()=>setToday(new Date()),30000);return()=>clearInterval(timer);},[]);
   const [query,setQuery]=useState("");
   const [priority,setPriority]=useState<TaskPriority|"All">("All");
   const [project,setProject]=useState("All");
@@ -36,7 +35,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
   const dialog=useRef<HTMLDialogElement>(null);
   const stats=useMemo(()=>calculateStats(tasks),[tasks]);
   const counts=useMemo(()=>statusCounts(tasks),[tasks]);
-  const filtered=useMemo(()=>filterTasks(tasks,{query,priority,project,status}),[tasks,query,priority,project,status]);
+  const filtered=useMemo(()=>sortTasks(filterTasks(tasks,{query,priority,project,status,due},today),sort),[tasks,query,priority,project,status,due,sort,today]);
   useEffect(()=>{if(!notice)return;const timer=setTimeout(()=>setNotice(""),5000);return()=>clearTimeout(timer);},[notice]);
 
   function openNew(){setForm(emptyForm);dialog.current?.showModal();}
@@ -53,7 +52,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Unable to create task");
       setTasks(previous=>[data as TaskDTO,...previous]);
-      setStatus("All");setPriority("All");setProject("All");setQuery("");
+      setDue("All");setStatus("All");setPriority("All");setProject("All");setQuery("");
       closeNew();setNotice("Task created successfully.");
     }catch(error){setNotice(error instanceof Error?error.message:"Create failed.");}
     finally{setBusy(false);}
@@ -81,8 +80,8 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
     }catch(error){setNotice(error instanceof Error?error.message:"Delete failed.");}
     finally{setBusy(false);}
   }
-  function clearFilters(){setQuery("");setPriority("All");setProject("All");setStatus("All");}
-  const filterActive=Boolean(query)||priority!=="All"||project!=="All"||status!=="All";
+  function clearFilters(){setDue("All");setQuery("");setPriority("All");setProject("All");setStatus("All");}
+  const filterActive=due!=="All"||Boolean(query)||priority!=="All"||project!=="All"||status!=="All";
   const completionSegments=STATUSES.map(key=>({key,count:counts[key],pct:stats.total?counts[key]/stats.total*100:0}));
 
   return <div className="shell">
@@ -126,7 +125,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
         <section className="board-section" aria-label="Project board">
           <div className="board-header"><div><div className="section-kicker">PROJECTS / TASK MANAGER</div><h2>{view==="board"?"Project board":"Your project board"}<span className="board-total">{stats.total}</span></h2><p>Move tasks through your workflow and keep every project on track.</p></div><button className="btn btn-outline" onClick={openNew} type="button"><Plus size={16}/> Add task</button></div>
           <div className="filterbar"><label className="search-field"><Search size={17}/><input aria-label="Search tasks" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search tasks, owners, projects..."/></label>
-          <div className="filters"><label className="select-wrap"><span className="sr-only">Filter by project</span><select value={project} onChange={e=>setProject(e.target.value)} aria-label="Filter by project"><option value="All">All projects</option>{PROJECTS.map(p=><option key={p}>{p}</option>)}</select></label>
+          <div className="filters"><label className="select-wrap deadline-control"><span>Due date</span><select value={due} onChange={e=>setDue(e.target.value as DueFilter)}>{["All","Overdue","Due in next 7 days"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap deadline-control"><span>Sort by</span><select value={sort} onChange={e=>setSort(e.target.value as TaskSort)}>{["Due soonest","Newest first"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap"><span className="sr-only">Filter by project</span><select value={project} onChange={e=>setProject(e.target.value)} aria-label="Filter by project"><option value="All">All projects</option>{PROJECTS.map(p=><option key={p}>{p}</option>)}</select></label>
           <label className="select-wrap"><span className="sr-only">Filter by priority</span><select value={priority} onChange={e=>setPriority(e.target.value as TaskPriority|"All")} aria-label="Filter by priority"><option value="All">All priorities</option>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select></label>
           {status!=="All"&&<button className="filter-chip" onClick={()=>setStatus("All")} type="button">{status} <X size={14}/></button>}
           {filterActive&&<button className="clear-filters" type="button" onClick={clearFilters}>Clear filters</button>}
@@ -140,7 +139,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
                   {items.map(task=><article key={task.id} className="task-card" data-testid="task-card">
                     <div className="card-eyebrow"><span className={"project-marker project-"+task.project.toLowerCase()}/>{task.project}<span className={"priority priority-"+task.priority.toLowerCase()}>{task.priority}</span></div>
                     <h4>{task.title}</h4><p>{task.description||"No description provided."}</p>
-                    <div className="card-meta"><span className={isOverdue(task)?"due-overdue":""}><CalendarDays size={14}/>{dateLabel(task.dueDate)}</span><span title={task.assignee} className="assignee">{initials(task.assignee)}</span></div>
+                    <div className="card-meta"><span className={isOverdue(task,today)?"due-overdue":""}><CalendarDays size={14}/>{dateLabel(task.dueDate)}</span><span title={task.assignee} className="assignee">{initials(task.assignee)}</span></div>
                     <div className="card-actions"><label className="sr-only" htmlFor={"status-"+task.id}>Status</label><select id={"status-"+task.id} aria-label="Status" disabled={busy} value={task.status} onChange={e=>updateStatus(task,e.target.value as TaskStatus)}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select><button type="button" disabled={busy} className="delete-btn" aria-label="Delete task" title="Delete task" onClick={()=>deleteTask(task)}><Trash2 size={15}/></button></div>
                   </article>)}
                   {items.length===0&&<div className="empty-column"><Circle size={19}/><span>No tasks here</span></div>}
