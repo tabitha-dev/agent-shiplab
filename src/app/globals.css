@@ -136,3 +136,9 @@ a{color:inherit;text-decoration:none}
 .deadline-control{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#d3c7fd;min-width:0}
 .filterbar{flex-wrap:wrap}.filters{max-width:100%}.deadline-control select{max-width:100%}
 select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #b99aff;outline-offset:3px}
+
+.analytics-bars { display:grid; gap:16px; margin:24px 0; }
+.analytics-table { width:100%; border-collapse:collapse; margin:24px 0; }
+.analytics-table caption { text-align:left; font-weight:600; padding:12px 0; }
+.analytics-table th,.analytics-table td { text-align:left; padding:12px 8px; border-bottom:1px solid #dedee8; }
+.side-nav button:focus-visible { outline:3px solid #7655d6; outline-offset:2px; }
