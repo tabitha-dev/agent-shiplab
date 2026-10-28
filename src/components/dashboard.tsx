@@ -34,6 +34,23 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
   const [menuOpen,setMenuOpen]=useState(false);
+  const menuToggle=useRef<HTMLButtonElement>(null);
+  const menuClose=useRef<HTMLButtonElement>(null);
+  const [mobile,setMobile]=useState(false);
+  useEffect(()=>{
+    const media=window.matchMedia("(max-width:700px)");
+    const update=()=>{setMobile(media.matches);if(!media.matches)setMenuOpen(false);};
+    update();media.addEventListener("change",update);
+    return()=>media.removeEventListener("change",update);
+  },[]);
+  useEffect(()=>{
+    if(!menuOpen)return;
+    menuClose.current?.focus();
+    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape"){setMenuOpen(false);menuToggle.current?.focus();}};
+    document.addEventListener("keydown",escape);
+    return()=>document.removeEventListener("keydown",escape);
+  },[menuOpen]);
+  function closeMenu(){setMenuOpen(false);menuToggle.current?.focus();}
   const dialog=useRef<HTMLDialogElement>(null);
   const stats=useMemo(()=>calculateStats(tasks),[tasks]);
   const counts=useMemo(()=>statusCounts(tasks),[tasks]);
@@ -94,17 +111,18 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
   const completionSegments=STATUSES.map(key=>({key,count:counts[key],pct:stats.total?counts[key]/stats.total*100:0}));
 
   return <div className="shell">
-    <aside className={"sidebar "+(menuOpen?"sidebar-open":"")} aria-label="Workspace navigation">
+    <aside id="workspace-navigation" inert={mobile&&!menuOpen} className={"sidebar "+(menuOpen?"sidebar-open":"")} aria-label="Workspace navigation">
+      <button ref={menuClose} className="drawer-close" type="button" aria-label="Close navigation" onClick={closeMenu}><X size={20}/></button>
       <div className="brand"><div className="brand-mark"><Sparkles size={22}/></div><div><strong>ShipLab<span className="brand-dot">.</span></strong><small>AGENT WORKSPACE</small></div></div>
       <div className="workspace-switch"><div className="workspace-avatar">S</div><span><strong>Studio workspace</strong><small>Personal project</small></span><Check size={16}/></div>
       <div className="sidebar-section-title">WORKSPACE</div>
       <nav className="side-nav" aria-label="Main menu">
-        <button type="button" onClick={()=>{setView("overview");setMenuOpen(false);}} className={view==="overview"?"nav-active":""} aria-current={view==="overview"?"page":undefined}><LayoutDashboard size={18}/> Overview</button>
-        <button type="button" onClick={()=>{setView("board");setMenuOpen(false);}} className={view==="board"?"nav-active":""} aria-current={view==="board"?"page":undefined}><Columns3 size={18}/> Project board <span className="nav-count">{stats.total}</span></button>
+        <button type="button" onClick={()=>{setView("overview");closeMenu();}} className={view==="overview"?"nav-active":""} aria-current={view==="overview"?"page":undefined}><LayoutDashboard size={18}/> Overview</button>
+        <button type="button" onClick={()=>{setView("board");closeMenu();}} className={view==="board"?"nav-active":""} aria-current={view==="board"?"page":undefined}><Columns3 size={18}/> Project board <span className="nav-count">{stats.total}</span></button>
       </nav>
       <div className="sidebar-section-title">YOUR PIPELINE</div>
       <nav className="side-nav" aria-label="Task status filters">
-        {STATUSES.map(name=><button key={name} type="button" onClick={()=>{setStatus(name);setView("board");setMenuOpen(false);}} className={status===name?"nav-soft-active":""}><span className={"status-dot dot-"+name.replaceAll(" ","-").toLowerCase()}/>{name}<span className="nav-count">{counts[name]}</span></button>)}
+        {STATUSES.map(name=><button key={name} type="button" onClick={()=>{setStatus(name);setView("board");closeMenu();}} className={status===name?"nav-soft-active":""}><span className={"status-dot dot-"+name.replaceAll(" ","-").toLowerCase()}/>{name}<span className="nav-count">{counts[name]}</span></button>)}
       </nav>
       <div className="sidebar-spacer"/>
       <div className="sidebar-callout"><div className="callout-icon"><ShieldCheck size={20}/></div><strong>Built to be tested.</strong><p>Real code. Real pull requests. Measurable results.</p><a href="https://github.com/tabitha-dev/agent-shiplab" target="_blank" rel="noreferrer">View GitHub repo <ArrowUpRight size={14}/></a></div>
@@ -112,7 +130,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
     </aside>
     <div className="main-region">
       <header className="topbar">
-        <button type="button" className="mobile-menu" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}><Columns3 size={20}/></button>
+        <button type="button" ref={menuToggle} className="mobile-menu" aria-controls="workspace-navigation" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}><Columns3 size={20}/></button>
         <div className="breadcrumb">Workspace <span>/</span> <strong>{view==="overview"?"Overview":"Project board"}</strong></div>
         <div className="top-actions"><span className="live-pill"><span className="live-dot"/> LOCAL DEMO</span><a href="https://github.com/tabitha-dev/agent-shiplab" target="_blank" rel="noreferrer" className="top-github" aria-label="View repository on GitHub"><Github size={19}/></a><button className="btn btn-primary" onClick={openNew} type="button"><Plus size={17}/> New task</button></div>
       </header>

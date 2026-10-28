@@ -136,3 +136,14 @@ a{color:inherit;text-decoration:none}
 .deadline-control{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#d3c7fd;min-width:0}
 .filterbar{flex-wrap:wrap}.filters{max-width:100%}.deadline-control select{max-width:100%}
 select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #b99aff;outline-offset:3px}
+
+/* Keep the drawer close action above its content and board scrolling inside the board. */
+.drawer-close{display:none}
+@media(max-width:700px){
+  .sidebar .drawer-close{display:grid;place-items:center;align-self:flex-end;flex-shrink:0;background:#202437;color:white;border:1px solid #555b75;border-radius:8px;width:36px;height:36px;margin-bottom:12px}
+  .board-foot{flex-wrap:wrap}
+  .board-foot>span{min-width:0;overflow-wrap:anywhere}
+}
+/* Anchor visually hidden labels to their scroll container, rather than the page. */
+.board{position:relative}
+.board-foot{flex-wrap:wrap}
