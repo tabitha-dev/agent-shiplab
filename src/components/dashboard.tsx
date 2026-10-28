@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import {calculateStats,filterTasks,sortTasks,isOverdue,type DueFilter,type TaskSort,PRIORITIES,PROJECTS,STATUSES,statusCounts,type TaskDTO,type TaskPriority,type TaskStatus} from "@/lib/task-logic";
 
-type View="overview"|"board";
+type View="overview"|"board"|"analytics";
 type CreateFields={title:string;description:string;project:string;assignee:string;priority:TaskPriority;status:TaskStatus;dueDate:string};
 const emptyForm:CreateFields={title:"",description:"",project:"Aurora",assignee:"You",priority:"Medium",status:"Backlog",dueDate:""};
 
@@ -92,7 +92,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
       <nav className="side-nav" aria-label="Main menu">
         <button type="button" onClick={()=>{setView("overview");setMenuOpen(false);}} className={view==="overview"?"nav-active":""} aria-current={view==="overview"?"page":undefined}><LayoutDashboard size={18}/> Overview</button>
         <button type="button" onClick={()=>{setView("board");setMenuOpen(false);}} className={view==="board"?"nav-active":""} aria-current={view==="board"?"page":undefined}><Columns3 size={18}/> Project board <span className="nav-count">{stats.total}</span></button>
-      </nav>
+      <button type="button" onClick={()=>{setView("analytics");setMenuOpen(false);}} className={view==="analytics"?"nav-active":""} aria-current={view==="analytics"?"page":undefined}><BarChart3 size={18}/> Analytics</button></nav>
       <div className="sidebar-section-title">YOUR PIPELINE</div>
       <nav className="side-nav" aria-label="Task status filters">
         {STATUSES.map(name=><button key={name} type="button" onClick={()=>{setStatus(name);setView("board");setMenuOpen(false);}} className={status===name?"nav-soft-active":""}><span className={"status-dot dot-"+name.replaceAll(" ","-").toLowerCase()}/>{name}<span className="nav-count">{counts[name]}</span></button>)}
@@ -104,7 +104,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
     <div className="main-region">
       <header className="topbar">
         <button type="button" className="mobile-menu" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}><Columns3 size={20}/></button>
-        <div className="breadcrumb">Workspace <span>/</span> <strong>{view==="overview"?"Overview":"Project board"}</strong></div>
+        <div className="breadcrumb">Workspace <span>/</span> <strong>{view==="overview"?"Overview":view==="analytics"?"Analytics":"Project board"}</strong></div>
         <div className="top-actions"><span className="live-pill"><span className="live-dot"/> LOCAL DEMO</span><a href="https://github.com/tabitha-dev/agent-shiplab" target="_blank" rel="noreferrer" className="top-github" aria-label="View repository on GitHub"><Github size={19}/></a><button className="btn btn-primary" onClick={openNew} type="button"><Plus size={17}/> New task</button></div>
       </header>
       <main className="content">
@@ -122,7 +122,18 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
             <div className="progress-panel"><div className="progress-top"><span>Delivery progress</span><BarChart3 size={20}/></div><div className="progress-head"><strong>{stats.completion}%</strong><span>of tasks completed</span></div><div className="progress-track"><span style={{width:stats.completion+"%"}}/></div><div className="progress-legend">{completionSegments.map(({key,count})=><div key={key}><span className={"status-dot dot-"+key.replaceAll(" ","-").toLowerCase()}/><span>{key}</span><strong>{count}</strong></div>)}</div></div>
           </section>
         </>}
-        <section className="board-section" aria-label="Project board">
+        {view==="analytics" && <section className="progress-panel" aria-labelledby="analytics-title">
+          <h2 id="analytics-title">Analytics</h2>
+          <p>Current snapshot of all loaded tasks across your workspace. Board filters do not apply.</p>
+          <p>Total tasks: <strong data-testid="analytics-total">{stats.total}</strong></p>
+          <p>Completion: <strong>{stats.completion}%</strong> ({stats.done} of {stats.total} tasks done; rounded to the nearest percent)</p>
+          {stats.total===0 && <p>No tasks yet. Create a task to see your status distribution.</p>}
+          <h3>Current status distribution</h3>
+          <div aria-hidden="true" className="analytics-bars">{completionSegments.map(({key,count,pct})=><div key={key}><span>{key}: {count}</span><div className="progress-track"><span style={{width:pct+"%"}}/></div></div>)}</div>
+          <table className="analytics-table"><caption>Task counts by current status</caption><thead><tr><th scope="col">Status</th><th scope="col">Tasks</th></tr></thead><tbody>{completionSegments.map(({key,count})=><tr key={key}><th scope="row">{key}</th><td>{count}</td></tr>)}</tbody><tfoot><tr><th scope="row">Total</th><td>{stats.total}</td></tr></tfoot></table>
+          <p>This snapshot does not show historical status changes or completion trends.</p>
+        </section>}
+        {view!=="analytics" && <section className="board-section" aria-label="Project board">
           <div className="board-header"><div><div className="section-kicker">PROJECTS / TASK MANAGER</div><h2>{view==="board"?"Project board":"Your project board"}<span className="board-total">{stats.total}</span></h2><p>Move tasks through your workflow and keep every project on track.</p></div><button className="btn btn-outline" onClick={openNew} type="button"><Plus size={16}/> Add task</button></div>
           <div className="filterbar"><label className="search-field"><Search size={17}/><input aria-label="Search tasks" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search tasks, owners, projects..."/></label>
           <div className="filters"><label className="select-wrap deadline-control"><span>Due date</span><select value={due} onChange={e=>setDue(e.target.value as DueFilter)}>{["All","Overdue","Due in next 7 days"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap deadline-control"><span>Sort by</span><select value={sort} onChange={e=>setSort(e.target.value as TaskSort)}>{["Due soonest","Newest first"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap"><span className="sr-only">Filter by project</span><select value={project} onChange={e=>setProject(e.target.value)} aria-label="Filter by project"><option value="All">All projects</option>{PROJECTS.map(p=><option key={p}>{p}</option>)}</select></label>
@@ -148,7 +159,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
             })}
           </div>
           <div className="board-foot"><span><Check size={15}/> Changes persist in your local SQLite database</span><span>Showing {filtered.length} of {tasks.length} tasks</span></div>
-        </section>
+        </section>}
         <footer className="content-footer"><span>© {new Date().getFullYear()} ShipLab · An open-source agent experiment</span><a href="https://github.com/tabitha-dev/agent-shiplab" rel="noreferrer" target="_blank">Explore the source <ExternalLink size={13}/></a></footer>
       </main>
     </div>
