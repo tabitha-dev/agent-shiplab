@@ -11,9 +11,9 @@ export interface TaskFilters {
   query?:string; status?:TaskStatus|"All"; priority?:TaskPriority|"All"; project?:string|"All";
 }
 export function filterTasks(tasks:TaskDTO[],filters:TaskFilters):TaskDTO[] {
-  const q=(filters.query??"").trim();
+  const q=(filters.query??"").trim().toLowerCase();
   return tasks.filter(task=>
-    (!q || [task.title,task.description,task.assignee,task.project].join(" ").includes(q)) &&
+    (!q || [task.title,task.description,task.assignee,task.project].join(" ").toLowerCase().includes(q)) &&
     (!filters.status || filters.status==="All" || task.status===filters.status) &&
     (!filters.priority || filters.priority==="All" || task.priority===filters.priority) &&
     (!filters.project || filters.project==="All" || task.project===filters.project)
