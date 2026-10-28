@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import {calculateStats,filterTasks,sortTasks,isOverdue,type DueFilter,type TaskSort,PRIORITIES,PROJECTS,STATUSES,statusCounts,type TaskDTO,type TaskPriority,type TaskStatus} from "@/lib/task-logic";
 
+import {CSV_FILENAME,tasksToCsv} from "@/lib/task-csv";
+
 type View="overview"|"board";
 type CreateFields={title:string;description:string;project:string;assignee:string;priority:TaskPriority;status:TaskStatus;dueDate:string};
 const emptyForm:CreateFields={title:"",description:"",project:"Aurora",assignee:"You",priority:"Medium",status:"Backlog",dueDate:""};
@@ -38,6 +40,13 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
   const filtered=useMemo(()=>sortTasks(filterTasks(tasks,{query,priority,project,status,due},today),sort),[tasks,query,priority,project,status,due,sort,today]);
   useEffect(()=>{if(!notice)return;const timer=setTimeout(()=>setNotice(""),5000);return()=>clearTimeout(timer);},[notice]);
 
+  function exportCsv(){
+    const url=URL.createObjectURL(new Blob([tasksToCsv(filtered)],{type:"text/csv;charset=utf-8"}));
+    const link=document.createElement("a");
+    link.href=url;link.download=CSV_FILENAME;document.body.appendChild(link);
+    try{link.click();setNotice(filtered.length?`Exported ${filtered.length} tasks.`:"Exported headers only: no tasks match your filters.");}
+    finally{link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  }
   function openNew(){setForm(emptyForm);dialog.current?.showModal();}
   function closeNew(){dialog.current?.close();}
   function setField<K extends keyof CreateFields>(key:K,value:CreateFields[K]){
@@ -125,7 +134,7 @@ export default function Dashboard({initialTasks}:{initialTasks:TaskDTO[]}){
         <section className="board-section" aria-label="Project board">
           <div className="board-header"><div><div className="section-kicker">PROJECTS / TASK MANAGER</div><h2>{view==="board"?"Project board":"Your project board"}<span className="board-total">{stats.total}</span></h2><p>Move tasks through your workflow and keep every project on track.</p></div><button className="btn btn-outline" onClick={openNew} type="button"><Plus size={16}/> Add task</button></div>
           <div className="filterbar"><label className="search-field"><Search size={17}/><input aria-label="Search tasks" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search tasks, owners, projects..."/></label>
-          <div className="filters"><label className="select-wrap deadline-control"><span>Due date</span><select value={due} onChange={e=>setDue(e.target.value as DueFilter)}>{["All","Overdue","Due in next 7 days"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap deadline-control"><span>Sort by</span><select value={sort} onChange={e=>setSort(e.target.value as TaskSort)}>{["Due soonest","Newest first"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap"><span className="sr-only">Filter by project</span><select value={project} onChange={e=>setProject(e.target.value)} aria-label="Filter by project"><option value="All">All projects</option>{PROJECTS.map(p=><option key={p}>{p}</option>)}</select></label>
+          <div className="filters"><button type="button" className="btn btn-outline" onClick={exportCsv} aria-describedby="csv-help">Export CSV</button><span id="csv-help" className="sr-only">Exports current filters and sort. No matches exports headers only.</span><label className="select-wrap deadline-control"><span>Due date</span><select value={due} onChange={e=>setDue(e.target.value as DueFilter)}>{["All","Overdue","Due in next 7 days"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap deadline-control"><span>Sort by</span><select value={sort} onChange={e=>setSort(e.target.value as TaskSort)}>{["Due soonest","Newest first"].map(value=><option key={value}>{value}</option>)}</select></label><label className="select-wrap"><span className="sr-only">Filter by project</span><select value={project} onChange={e=>setProject(e.target.value)} aria-label="Filter by project"><option value="All">All projects</option>{PROJECTS.map(p=><option key={p}>{p}</option>)}</select></label>
           <label className="select-wrap"><span className="sr-only">Filter by priority</span><select value={priority} onChange={e=>setPriority(e.target.value as TaskPriority|"All")} aria-label="Filter by priority"><option value="All">All priorities</option>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select></label>
           {status!=="All"&&<button className="filter-chip" onClick={()=>setStatus("All")} type="button">{status} <X size={14}/></button>}
           {filterActive&&<button className="clear-filters" type="button" onClick={clearFilters}>Clear filters</button>}
