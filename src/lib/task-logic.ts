@@ -7,12 +7,33 @@ export interface TaskDTO {
   id:string; title:string; description:string; project:string; assignee:string;
   status:TaskStatus; priority:TaskPriority; dueDate:string|null; createdAt:string; updatedAt:string;
 }
+export type DueFilter = "All"|"Overdue"|"Due in next 7 days";
+export type TaskSort = "Due soonest"|"Newest first";
+export function localDate(date:Date):string {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+}
+// The API stores calendar dates at UTC noon; retain their written date.
+export const dueDay=(task:TaskDTO)=>task.dueDate?.slice(0,10)??null;
+export function isOverdue(task:TaskDTO,now=new Date()):boolean {
+  return task.status!=="Done" && dueDay(task)!==null && dueDay(task)!<localDate(now);
+}
+export function sortTasks(tasks:TaskDTO[],sort:TaskSort):TaskDTO[] {
+  const compare=(a:string,b:string)=>a<b?-1:a>b?1:0;
+  return [...tasks].sort((a,b)=>
+    (sort==="Due soonest"?compare(dueDay(a)??"9999-99-99",dueDay(b)??"9999-99-99"):0) ||
+    (Date.parse(b.createdAt)-Date.parse(a.createdAt)) || compare(a.id,b.id));
+}
 export interface TaskFilters {
+  due?:DueFilter;
   query?:string; status?:TaskStatus|"All"; priority?:TaskPriority|"All"; project?:string|"All";
 }
-export function filterTasks(tasks:TaskDTO[],filters:TaskFilters):TaskDTO[] {
+export function filterTasks(tasks:TaskDTO[],filters:TaskFilters,now=new Date()):TaskDTO[] {
+  const end=new Date(now); end.setDate(end.getDate()+6);
+  const today=localDate(now), last=localDate(end);
   const q=(filters.query??"").trim().toLocaleLowerCase();
   return tasks.filter(task=>
+    (!filters.due || filters.due==="All" || (task.status!=="Done" && dueDay(task)!==null &&
+      (filters.due==="Overdue"?dueDay(task)!<today:dueDay(task)!>=today && dueDay(task)!<=last))) &&
     (!q || [task.title,task.description,task.assignee,task.project].join(" ").toLocaleLowerCase().includes(q)) &&
     (!filters.status || filters.status==="All" || task.status===filters.status) &&
     (!filters.priority || filters.priority==="All" || task.priority===filters.priority) &&
