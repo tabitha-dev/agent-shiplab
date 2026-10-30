@@ -10,6 +10,8 @@
 
 From working previews to real GitHub pull requests, ShipLab gives every experiment a reproducible starting point.
 
+Built by [Tabitha Khadse](https://code.tabitha.dev/) as a reproducible engineering experiment. Her [portfolio case studies](https://code.tabitha.dev/#work) provide context alongside the independent tests and PR history in this repository.
+
 [![ShipLab CI](https://github.com/tabitha-dev/agent-shiplab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tabitha-dev/agent-shiplab/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-9F8BFF?style=flat-square)](./LICENSE)
 [![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-56CFB2?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
